@@ -891,7 +891,6 @@ class example4():
 
         self.expl = Explanations(100,Pl,Rl,4,0.90,[99])
 
-
     def test1(self):
         self.expl.single_get_state_explanation_distribution(0,labels=['Action UP','Action DOWN','Action LEFT','Action RIGHT'])
 
@@ -899,20 +898,25 @@ class example4():
         self.expl.single_get_state_explanation_distribution(0,change_Pl=False,labels=['Action UP','Action DOWN','Action LEFT','Action RIGHT'])
 
     def test3(self):
-        self.expl.c51_state_distribution(0,-750,750,labels=['Action UP','Action DOWN','Action LEFT','Action RIGHT'])
+        self.expl.c51_state_distribution(83,-750,750,labels=['Action UP','Action DOWN','Action LEFT','Action RIGHT'])
 
     def test4(self):
-        self.expl.c51_state_distribution(0,-750,750, proc_actions=[3])
+        self.expl.c51_state_distribution(83,-750,750, proc_actions=[3])
 
     def test5(self):
         path = [0,10,20,30,31,41,51,61,62,72,82,83,84,85,86,87,88,98,99]
         pathactions = [1,1,1,3,1,1,1,3,1,1,3,3,3,3,3,3,1,3]
         self.expl.get_path_distribution(path,pathactions)
 
+    # def test5(self):
+    #     path = [0,10,11,12,13,14,15,16,17,18,19,29,39,49,59,58,68,78,88,98,99]
+    #     pathactions = [1,3,3,3,3,3,3,3,3,3,1,1,1,1,2,1,1,1,1,3]
+    #     self.expl.get_path_distribution(path,pathactions)
+
     def test6(self):
         path = [0,10,20,30,31,41,51,61,62,72,82,83,84,85,86,87,88,98,99]
         pathactions = [1,1,1,3,1,1,1,3,1,1,3,3,3,3,3,3,1,3]
-        bif = self.expl.get_path_bifurcations_outside_path(path,pathactions)
+        bif = self.expl.get_path_all_bifurcations(path,pathactions)
 
     def test7(self):
         pth = self.expl.get_optimal_path_from_state(0)
@@ -925,16 +929,35 @@ class example4():
 
     def test9(self):
         self.expl.single_get_state_explanation_distribution(0,proc_actions=[1,3])
-    
+
     def test10(self):
+        path = [0,10,20,30,31,41,51,61,62,72,82,83,84,85,86,87,88,98,99]
+        pathactions = [1,1,1,3,1,1,1,3,1,1,3,3,3,3,3,3,1,3]
+        self.expl.get_path_security_distribution(path,pathactions,epsilon=0.0,always_return_path=False,return_path_if_same_or_new=True,Never_return_path=False)
+
+    def test11(self):
+        path = [0,10,20,30,31,41,51,61,62,72,82,83,84,85,86,87,88,98,99]
+        pathactions = [1,1,1,3,1,1,1,3,1,1,3,3,3,3,3,3,1,3]
+        self.expl.get_path_security_distribution(path,pathactions,epsilon=0.3,always_return_path=False,return_path_if_same_or_new=True,Never_return_path=False)
+
+    def test12(self):
         path = [0,10,20,30,31,41,51,61,62,72,82,83,84,85,86,87,88,98,99]
         pathactions = [1,1,1,3,1,1,1,3,1,1,3,3,3,3,3,3,1,3]
         self.expl.get_path_security_distribution(path,pathactions,epsilon=0.5,always_return_path=False,return_path_if_same_or_new=True,Never_return_path=False)
 
-# if __name__ == "__main__":
-#     ex1 = example1()
-#     ex2 = example2()
-#     ex3 = example3()
-#     ex4 = example4()
+    def test13(self):
+        path = [0,10,20,30,31,41,51,61,62,72,82,83,84,85,86,87,88,98,99]
+        pathactions = [1,1,1,3,1,1,1,3,1,1,3,3,3,3,3,3,1,3]
+        self.expl.get_path_security_distribution(path,pathactions,epsilon=0.7,always_return_path=False,return_path_if_same_or_new=True,Never_return_path=False)
 
+if __name__ == "__main__":
+    ex1 = example1()
+    ex2 = example2()
+    ex3 = example3()
+    ex4 = example4()
+
+    ex4.test10()
+    ex4.test11()
+    ex4.test12()
+    ex4.test13()
     

@@ -28,6 +28,9 @@ class singlepath_explanation():
             self.Pol = Pol
             self.V = V
             self.Q = Q
+        self.state_list = []
+        for state in range(self.nS):
+            self.state_list.append(state)
 
     def value_iteration(self):
         nQ = np.zeros((self.nS,self.actions))
@@ -96,27 +99,18 @@ class singlepath_explanation():
             nextpos = path[i] 
             action = pathactions[i-1] 
 
-            prob = random.random()
-            while prob == 0:
-                prob = random.random()
-            addprob = 0
-
-            for state in range(self.nS):
-                if prob <= self.Pl[pos,action,state] + addprob:
-                    if state == nextpos:
-                        i = i + 1
-                        pos = nextpos
-                        break
-                    elif state == pos:
-                        break
-                    else:
-                        if state in path:
-                            pos = state
-                            i = path.index(pos) + 1
-                        else:
-                            return False, steps, reward # it failed to do the path
-                    break
-                addprob += self.Pl[pos,action,state]
+            state = np.random.choice(self.state_list,p=self.Pl[pos,action])
+            if state == nextpos:
+                i = i + 1
+                pos = nextpos
+            elif state == pos:
+                pos = state
+            else:
+                if state in path:
+                    pos = state
+                    i = path.index(pos) + 1
+                else:
+                    return False, steps, reward # it failed to do the path
  
             steps += 1
             reward += self.Rl[pos,action] * self.gamma ** steps
@@ -157,38 +151,36 @@ class singlepath_explanation():
         else:
             return False
 
-    def run_from_point(self,Pol,start_pos):
+    def run_from_point(self,Pol,start_pos,max_steps=100000):
         pos = start_pos
         action = Pol[pos]
         steps = 0
         reward = self.Rl[pos,action] * self.gamma ** steps
         while not self.is_goal(pos): 
             #generate next pos
-            prob = random.random()
-            while prob == 0:
-                prob = random.random()
-            addprob = 0
 
-            for state in range(self.nS):
-                if prob <= self.Pl[pos,action,state] + addprob:
-                    pos = state
-                    break
-                addprob += self.Pl[pos,action,state]
-            
+            pos = np.random.choice(self.state_list,p=self.Pl[pos,action])
             action = Pol[pos]
          
             steps += 1
+            if steps == max_steps:
+                steps = -1
+                return steps, reward
             reward += self.Rl[pos,action] * self.gamma ** steps
         return steps, reward
 
     # generate the distribution of starting in a certain pos and following a certain policy
-    def generate_single_state_distribution(self,Pol,start_pos,n=100000):  
+    def generate_single_state_distribution(self,Pol,start_pos,n=100000,max_steps=100000):  
         totalsteps = 0
         totalreward = 0
         run_reward_dict = {}
         run_steps_dict = {}
         for i in range(n):
-            steps,reward = self.run_from_point(Pol,start_pos)
+            steps,reward = self.run_from_point(Pol,start_pos,max_steps=max_steps)
+            #print(steps)
+            if steps == -1:
+                print('Max steps Reached')
+                continue
             if steps in run_steps_dict:
                 run_steps_dict[steps] = run_steps_dict[steps] + 1
             else:
@@ -224,7 +216,7 @@ class singlepath_explanation():
 
 
     #proc_actions : actions to be processed it can be all or a certain action
-    def state_explain(self,singlestate,change_Pl=False,proc_actions='all',n=100000):
+    def state_explain(self,singlestate,change_Pl=False,proc_actions='all',n=100000,max_steps=100000):
         auxpol = self.Pol.copy()
         distribution_steps = {}
         distribution_reward = {}
@@ -238,12 +230,16 @@ class singlepath_explanation():
                 if change_Pl:
                     flag = self.change_Pl(singlestate,action)
                     auxpol = self.value_iteration()
+                    #print(self.Pl)
                     bifurcations = self.state_bifurcations(singlestate,action)
                     if len(bifurcations) == 0 or (len(bifurcations) == 1 and bifurcations[0] == singlestate):
                         self.set_Pl(singlestate,originalPl)
                         continue
+                    elif auxpol[singlestate] != action:
+                            self.set_Pl(singlestate,originalPl)
+                            continue
                     start_pos = singlestate
-                    run_steps_dict, run_reward_dict, totalsteps, totalreward = self.generate_single_state_distribution(auxpol,start_pos,n)
+                    run_steps_dict, run_reward_dict, totalsteps, totalreward = self.generate_single_state_distribution(auxpol,start_pos,n,max_steps=max_steps)
                     distribution_steps[action] = run_steps_dict
                     distribution_reward[action] = run_reward_dict
                     self.set_Pl(singlestate,originalPl)
@@ -252,7 +248,7 @@ class singlepath_explanation():
                     this_run_steps_dict = {}
                     this_run_reward_dict = {}
                     for nextstate in bifurcations:
-                        run_steps_dict, run_reward_dict, totalsteps, totalreward = self.generate_single_state_distribution(auxpol,nextstate,n)
+                        run_steps_dict, run_reward_dict, totalsteps, totalreward = self.generate_single_state_distribution(auxpol,nextstate,n,max_steps=max_steps)
                         prob = self.Pl[singlestate,action,nextstate]
                         for key in run_steps_dict:
                             run_steps_dict[key] = run_steps_dict[key] * prob
@@ -281,8 +277,11 @@ class singlepath_explanation():
                         if len(bifurcations) == 0 or (len(bifurcations) == 1 and bifurcations[0] == singlestate):
                             self.set_Pl(singlestate,originalPl)
                             continue
+                        elif auxpol[singlestate] != action:
+                            self.set_Pl(singlestate,originalPl)
+                            continue
                         start_pos = singlestate
-                        run_steps_dict, run_reward_dict, totalsteps, totalreward = self.generate_single_state_distribution(auxpol,start_pos,n)
+                        run_steps_dict, run_reward_dict, totalsteps, totalreward = self.generate_single_state_distribution(auxpol,start_pos,n,max_steps=max_steps)
                         distribution_steps[action] = run_steps_dict
                         distribution_reward[action] = run_reward_dict
                         self.set_Pl(start_pos,originalPl)
@@ -291,7 +290,7 @@ class singlepath_explanation():
                     this_run_steps_dict = {}
                     this_run_reward_dict = {}
                     for nextstate in bifurcations:
-                        run_steps_dict, run_reward_dict, totalsteps, totalreward = self.generate_single_state_distribution(auxpol,nextstate,n)
+                        run_steps_dict, run_reward_dict, totalsteps, totalreward = self.generate_single_state_distribution(auxpol,nextstate,n,max_steps=max_steps)
                         prob = self.Pl[singlestate,action,nextstate]
                         for key in run_steps_dict:
                             run_steps_dict[key] = run_steps_dict[key] * prob
@@ -325,26 +324,48 @@ class singlepath_explanation():
     #start_pos: the starting position of the path
     #remove_path_cicles: removes transitions to an already point on the path, if False it will appear as a possible transation but it will not be explored
     #remove_self_trans: removes transitions from a state to itself, if False it will appear as a possible transation but it will not be explored (can only be False if remove_oath_cicles is False)
-    def get_optimal_paths(self,start_pos,remove_path_cicles=False,remove_self_trans=False,explored_path=[]):
+    def get_optimal_paths(self,start_pos,remove_path_cicles=False,remove_self_trans=False,only_policy_path=False,explored_path=[]):
         explored_path.append(start_pos)
         if self.is_goal(start_pos):
             return [start_pos]
         else:
-            state_path = [start_pos, []]
-            for action in range(self.actions):
-                if self.Q[start_pos,action] == self.V[start_pos]:
-                    for state in range(self.nS):
-                        if self.Pl[start_pos,action,state] > 0:
-                            #explored
-                            if state in explored_path:
-                                if not remove_path_cicles:
-                                    if state == start_pos and not remove_self_trans:
-                                        state_path[1].append([state])
-                                    elif state != start_pos:
-                                        state_path[1].append([state])
-                            #not explored
-                            else:
-                                state_path[1].append(self.get_optimal_paths(state,remove_path_cicles,remove_self_trans,explored_path.copy()))
+            if only_policy_path:
+                action = self.Pol[start_pos]
+                state_path = [start_pos, []]
+                for state in range(self.nS):
+                    if self.Pl[start_pos,action,state] > 0:
+                        #explored
+                        if state in explored_path:
+                            if not remove_path_cicles:
+                                if state == start_pos and not remove_self_trans:
+                                    state_path[1].append(action)
+                                    state_path[1].append([state])
+                                elif state != start_pos:
+                                    state_path[1].append(action)
+                                    state_path[1].append([state])
+                        #not explored
+                        else:
+                            state_path[1].append(action)
+                            state_path[1].append(self.get_optimal_paths(state,remove_path_cicles,remove_self_trans,only_policy_path,explored_path.copy()))
+            else:
+                state_path = [start_pos, []]
+                for action in range(self.actions):
+                    if self.Q[start_pos,action] == self.V[start_pos]:
+                        for state in range(self.nS):
+                            if self.Pl[start_pos,action,state] > 0:
+                                #explored
+                                if state in explored_path:
+                                    if not remove_path_cicles:
+                                        if state == start_pos and not remove_self_trans:
+                                            state_path[1].append(action)
+                                            state_path[1].append([state])
+                                        elif state != start_pos:
+                                            state_path[1].append(action)
+                                            state_path[1].append([state])
+                                #not explored
+                                else:
+                                    state_path[1].append(action)
+                                    state_path[1].append(self.get_optimal_paths(state,remove_path_cicles,remove_self_trans,only_policy_path,explored_path.copy()))
         return state_path
 
     # it receives a list of states (path) and a list of actions between each state (pathactions)
@@ -356,3 +377,33 @@ class singlepath_explanation():
             run_reward_dict[key] = run_reward_dict[key] / n
         return run_steps_dict, run_reward_dict, n_incomplete
 
+# if __name__ == "__main__":
+#     #example 1
+#     Pl = np.zeros((4,1,4))
+#     Pl[0,0,1] = 0.5
+#     Pl[0,0,2] = 0.5
+#     Pl[1,0,3] = 1
+#     Pl[2,0,2] = 0.5
+#     Pl[2,0,3] = 0.5
+
+
+#     Rl = np.zeros((4,1))
+#     Rl[0,0] = 0
+#     Rl[1,0] = -500
+#     Rl[2,0] = 0
+#     Rl[3,0] = 1000
+
+#     single =  single_explanation(4,Pl,Rl,1,0.90,[3])
+
+#     path = single.get_optimal_paths(0,remove_path_cicles=True,remove_self_trans=False)
+#     print(path)
+
+#     #path = [0,2,3]
+#     #pathaction = [0,0]
+
+#     #distribution_steps, distribution_reward = single.path_explain(path,pathaction)
+#     #print(distribution_steps)
+#     #print(distribution_reward)
+
+#     #plt.hist(list(distribution_reward.keys()) , 10,weights=list(distribution_reward.values()), histtype='bar', color='blue')
+#     #plt.show()

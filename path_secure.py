@@ -31,6 +31,9 @@ class path_secure():
             self.Pol = Pol
             self.V = V
             self.Q = Q
+        self.state_list = []
+        for state in range(self.nS):
+            self.state_list.append(state)
 
 
     def value_iteration(self):
@@ -78,11 +81,18 @@ class path_secure():
     def action_returns_to_path(self,pos,action,path):
         nextstates=[]
         flag = False
+        # mini = len(path)
+        # maxi = 0
         for state in range(self.nS):
             if self.Pl[pos,action,state] > 0:
                 if state in path:
                     nextstates.append(state)
+                    #i = path.index(state)
                     flag = True
+                    # if i > maxi:
+                    #     maxi = i
+                    # if i < mini:
+                    #     mini = i
         return flag, nextstates
 
     #it always tries to return to the path eve if the prosition is the beginning of the path
@@ -160,9 +170,12 @@ class path_secure():
         return action 
 
 
+    #TODO: When it does an epsilon action it can do an action with 0 probability, is this what i want?? (needs corrections)
+
+    #usemini: if it is used the lowest possible state or the highest possible state to choose the action (in case we are trying to return to the path)
     #by default is uses the highest possible state
-    #path needs to end at a goal state 
-    def get_secure_value(self,path,pathactions,epsilon=0.3,always_return_path=False,return_path_if_same_or_new=True,Never_return_path=False):
+    #path needs to end at a goal state (change so this is not necessary??)
+    def get_secure_value(self,path,pathactions,epsilon=0.3,max_steps=100000,always_return_path=False,return_path_if_same_or_new=True,Never_return_path=False):
         pos = path[0]
         i = 1
         steps = 0
@@ -191,35 +204,30 @@ class path_secure():
             reward += self.Rl[pos,action] * self.gamma ** steps
             #nextpos = path[i] 
 
-            prob = random.random()
-
-            #make sure prob is not 0
-            while prob == 0:
-                prob = random.random()
-
-            addprob = 0
-
-            for state in range(self.nS):
-                if prob <= self.Pl[pos,action,state] + addprob:
-                    pos = state
-                    if state in path:
-                        i = path.index(pos) + 1
-                    break
-                addprob += self.Pl[pos,action,state]
+            pos = np.random.choice(self.state_list,p=self.Pl[pos,action])
+            if pos in path:
+                i = path.index(pos) + 1
 
  
             steps += 1
+            if steps == max_steps:
+                steps = -1
+                return steps, reward
 
         reward += self.Rl[pos,action] * self.gamma ** steps
         return steps, reward
     
-    def path_secure_distribution(self,path,pathactions,epsilon=0.3,always_return_path=False,return_path_if_same_or_new=True,Never_return_path=False,n=100000):
+    def path_secure_distribution(self,path,pathactions,epsilon=0.3,always_return_path=False,return_path_if_same_or_new=True,Never_return_path=False,n=100000,max_steps=100000):
         totalsteps = 0
         totalreward = 0
         run_reward_dict = {}
         run_steps_dict = {}
         for i in range(n):
-            steps,reward = self.get_secure_value(path,pathactions,epsilon,always_return_path,return_path_if_same_or_new,Never_return_path)
+            print(i)
+            steps,reward = self.get_secure_value(path,pathactions,epsilon,max_steps,always_return_path,return_path_if_same_or_new,Never_return_path)
+            if steps == -1:
+                print('Max steps Reached')
+                continue
             if steps in run_steps_dict:
                 run_steps_dict[steps] = run_steps_dict[steps] + 1
             else:
@@ -242,4 +250,86 @@ class path_secure():
 
 
 
+# if __name__ == "__main__":
+#     #example 1
+#     #
+#     # 10 | 11 | 12 | 13 | 14
+#     # 5  | 6  | 7  | 8  | 9
+#     # 0  | 1  | 2  | 3  | 4
+#     #
+#     Pl = np.zeros((15,4,15))
+#     Pl[0,0,5] = 1
+#     Pl[0,3,1] = 1
+#     Pl[1,0,6] = 1
+#     Pl[1,2,0] = 1
+#     Pl[1,3,2] = 1
+#     Pl[2,0,7] = 1
+#     Pl[2,2,1] = 1
+#     Pl[2,3,3] = 1
+#     Pl[3,0,8] = 1
+#     Pl[3,2,2] = 1
+#     Pl[3,3,4] = 1
+#     Pl[4,0,9] = 1
+#     Pl[4,2,3] = 1
+#     Pl[5,0,10] = 1
+#     Pl[5,1,0] = 1
+#     Pl[5,3,6] = 1
+#     Pl[6,0,11] = 1
+#     Pl[6,1,1] = 1
+#     Pl[6,2,5] = 1
+#     Pl[6,3,7] = 1
+#     Pl[7,0,12] = 1
+#     Pl[7,1,2] = 1
+#     Pl[7,2,6] = 1
+#     Pl[7,3,8] = 1
+#     Pl[8,0,13] = 1
+#     Pl[8,1,3] = 1
+#     Pl[8,2,7] = 1
+#     Pl[8,3,9] = 1
+#     Pl[9,0,14] = 1
+#     Pl[9,1,4] = 1
+#     Pl[9,2,8] = 1
+#     Pl[10,1,5] = 1
+#     Pl[10,3,11] = 1
+#     Pl[11,1,6] = 1
+#     Pl[11,2,10] = 1
+#     Pl[11,3,12] = 1
+#     Pl[12,1,7] = 1
+#     Pl[12,2,11] = 1
+#     Pl[12,3,13] = 1
+#     Pl[13,1,8] = 1
+#     Pl[13,2,12] = 1
+#     Pl[13,3,14] = 1
+#     Pl[14,1,9] = 1
+#     Pl[14,2,13] = 1
+
+#     Rl = np.zeros((15,4))
+#     Rl[1,0] = -100
+#     Rl[1,1] = -100
+#     Rl[1,2] = -100
+#     Rl[1,3] = -100
+#     Rl[2,0] = -100
+#     Rl[2,1] = -100
+#     Rl[2,2] = -100
+#     Rl[2,3] = -100
+#     Rl[3,0] = -100
+#     Rl[3,1] = -100
+#     Rl[3,2] = -100
+#     Rl[3,3] = -100
+#     Rl[4,0] = 100
+#     Rl[4,1] = 100
+#     Rl[4,2] = 100
+#     Rl[4,3] = 100
+
+#     path_s =  path_secure(15,Pl,Rl,4,0.90,[4])
+
+#     path = [0,5,6,7,8,9,4]
+#     pathactions = [0,3,3,3,3,1]
+
+#     distribution_steps, distribution_reward = path_s.path_secure_distribution(path,pathactions)
+#     #print(distribution_steps)
+#     #print(distribution_reward)
+
+#     plt.hist(list(distribution_reward.keys()) , 10,weights=list(distribution_reward.values()), histtype='bar', color='blue')
+#     plt.show()
 

@@ -12,6 +12,16 @@ import collections
 import time
 import math
 
+#used for explanations (should be passed to grid class)
+size = 30
+path = []
+path_line = []
+singleevent=0
+singleclicked=0
+pathevent = 0
+pathclicked = 0
+singleeventsquare=-1
+
 class C51():
     def __init__(self,nS,actions,gamma,vmax,vmin,Pl,Rl,atoms = 51):
         self.actions = actions
@@ -89,6 +99,8 @@ class C51():
             else:
                 m[l] = m[l] + self.pis[nextx,a_star,j] * (u - b)
                 m[u] = m[u] + self.pis[nextx,a_star,j] * (b - l)
+
+        #loss = 
         return m
 
     def initialize(self,state,action):
@@ -113,6 +125,9 @@ class C51():
 
         return m 
 
+    # explores the environment following an epsilon-greedy strategy, as mentioned in the paper
+    # initial_state were it startes the search
+    # terminals are the point were there is not action to get out
     # goal states are the objective, normally the actions with the highest reward
     def exploration(self):
 
